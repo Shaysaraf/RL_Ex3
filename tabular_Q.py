@@ -1,38 +1,40 @@
 import gym
 import numpy as np
 
-# Load environment
-env = gym.make('FrozenLake-v0')
+env = gym.make('FrozenLake-v1', is_slippery=False)
 
-# Implement Q-Table learning algorithm
-#Initialize table with all zeros
-Q = np.zeros([env.observation_space.n,env.action_space.n])
-# Set learning parameters
-lr = .8
-y = .95
+Q = np.zeros([env.observation_space.n, env.action_space.n])
+
+ALPHA = 0.8
+GAMMA = 0.95
+EPSILON = 1.0
+MIN_EPSILON = 0.01
+DECAY = 0.995
 num_episodes = 2000
-#create lists to contain total rewards and steps per episode
-#jList = []
 rList = []
-for i in range(num_episodes):
-    #Reset environment and get first new observation
-    s = env.reset()
-    rAll = 0 # Total reward during current episode
-    d = False
-    j = 0
-    #The Q-Table learning algorithm
-    while j < 99:
-        j+=1
-        # TODO: Implement Q-Learning
-        # 1. Choose an action by greedily (with noise) picking from Q table
-        # 2. Get new state and reward from environment
-        # 3. Update Q-Table with new knowledge
-        # 4. Update total reward
-        # 5. Update episode if we reached the Goal State
-    
-    rList.append(rAll)
 
-# Reports
-print("Score over time: " +  str(sum(rList)/num_episodes))
-print("Final Q-Table Values")
-print Q
+for i in range(num_episodes):
+    s, _ = env.reset()
+    stop = False
+    rAll = 0
+
+    while not stop:
+        if np.random.rand() < EPSILON:
+            a = env.action_space.sample()
+        else:
+            a = np.argmax(Q[s])
+
+        s1, reward, done, truncated, _ = env.step(a)
+        stop = done or truncated
+
+        Q[s, a] += ALPHA * (reward + GAMMA * np.max(Q[s1]) - Q[s, a])
+        rAll += reward
+        s = s1
+
+    rList.append(rAll)
+    EPSILON = max(MIN_EPSILON, EPSILON * DECAY)
+
+print(f"Success rate: {100.0 * sum(rList) / num_episodes:.2f}%")
+print("Final Q-table:")
+print(Q)
+
