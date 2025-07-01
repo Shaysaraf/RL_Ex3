@@ -91,9 +91,3 @@ success_rate = sum(rList) / num_episodes
 print(f"Success rate: {100.0 * success_rate:.2f}%")
 
 
-plt.plot(rList)
-plt.xlabel('Episode')
-plt.ylabel('Reward')
-plt.title('Reward per Episode')
-plt.grid()
-plt.show()
