@@ -1,61 +1,99 @@
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"  # Fix for OpenMP DLL error
+
 import gym
 import numpy as np
 import random
 import matplotlib.pyplot as plt
+import torch
+import torch.nn as nn
+import torch.optim as optim
 
 # Load environment
-env = gym.make('FrozenLake-v0')
+env = gym.make('FrozenLake-v1', is_slippery=True)  # Use deterministic env for better learning
 
-# Define the neural network mapping 16x1 one hot vector to a vector of 4 Q values
-# and training loss
-# TODO: define network, loss and optimiser(use learning rate of 0.1).
+# Define the neural network mapping 1x16 one-hot vector to a vector of 4 Q-values
+class QNetwork(nn.Module):
+    def __init__(self):
+        super(QNetwork, self).__init__()
+        self.fc = nn.Linear(16, 4)
 
-# Implement Q-Network learning algorithm
+    def forward(self, x):
+        return self.fc(x)
+
+# Instantiate model, loss, and optimizer
+model = QNetwork()
+optimizer = optim.SGD(model.parameters(), lr=0.1)
+loss_fn = nn.MSELoss()
 
 # Set learning parameters
-y = .99
-e = 0.1
+gamma = 0.99
+epsilon = 1.0
 num_episodes = 2000
-# create lists to contain total rewards and steps per episode
+
 jList = []
 rList = []
+
+
 for i in range(num_episodes):
-    # Reset environment and get first new observation
-    s = env.reset()
+    s = env.reset()[0]
     rAll = 0
-    d = False
+    stop = False
     j = 0
-    # The Q-Network
+
     while j < 99:
         j += 1
-        # 1. Choose an action greedily from the Q-network
-        #    (run the network for current state and choose the action with the maxQ)
-        # TODO: Implement Step 1
 
-        # 2. A chance of e to perform random action
-        if np.random.rand(1) < e:
+        s_vec = torch.zeros(1, 16)
+        s_vec[0][s] = 1.0
+
+        with torch.no_grad():
+            Q = model(s_vec)
+        _, a = torch.max(Q, 1)
+
+        # ε-greedy
+        if np.random.rand() < epsilon:
             a[0] = env.action_space.sample()
 
-        # 3. Get new state(mark as s1) and reward(mark as r) from environment
-        s1, r, d, _ = env.step(a[0])
+        s1, reward, stop, _, _ = env.step(a.item())
 
-        # 4. Obtain the Q'(mark as Q1) values by feeding the new state through our network
-        # TODO: Implement Step 4
+        s1_vec = torch.zeros(1, 16)
+        s1_vec[0][s1] = 1.0
+        with torch.no_grad():
+            Q1 = model(s1_vec)
+        maxQ1 = torch.max(Q1).item()
 
-        # 5. Obtain maxQ' and set our target value for chosen action using the bellman equation.
-        # TODO: Implement Step 5
+        Q_target = Q.clone().detach()
+        if stop:
+            Q_target[0][a] = reward
+        else:
+            Q_target[0][a] = reward + gamma * maxQ1
 
-        # 6. Train the network using target and predicted Q values (model.zero(), forward, backward, optim.step)
-        # TODO: Implement Step 6
+        output = model(s_vec)
+        Q_pred = output[0, a]
+        loss = loss_fn(Q_pred, Q_target[0, a])
 
-        rAll += r
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        rAll += reward
         s = s1
-        if d == True:
-            #Reduce chance of random action as we train the model.
-            e = 1./((i/50) + 10)
+        if stop:
             break
+
+    epsilon = max(0.01, epsilon * 0.995)  # decay epsilon
     jList.append(j)
     rList.append(rAll)
 
-# Reports
-print("Score over time: " + str(sum(rList)/num_episodes))
+# Report performance
+success_rate = sum(rList) / num_episodes
+print(f"Success rate: {100.0 * success_rate:.2f}%")
+
+
+plt.plot(rList)
+plt.xlabel('Episode')
+plt.ylabel('Reward')
+plt.title('Reward per Episode')
+plt.grid()
+plt.show()
