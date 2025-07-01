@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 # Load environment
-env = gym.make('FrozenLake-v1', is_slippery=True)  # Use deterministic env for better learning
+env = gym.make('FrozenLake-v1', is_slippery=False)  # Use deterministic env for better learning
 
 # Define the neural network mapping 1x16 one-hot vector to a vector of 4 Q-values
 class QNetwork(nn.Module):
