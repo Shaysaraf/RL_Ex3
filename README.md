@@ -1,10 +1,10 @@
 # RL_Ex3
-README.txt
-
 Reinforcement Learning – Exercise 3
 Students:
   Daniel Soref - 204798342 - soref@mail.tau.ac.il
   Shay Saraf - 326540721 - shaysaraf@mail.tau.ac.il
+  
+README.txt
 
 ------------------------------------------------------------
 Contents of Submission
